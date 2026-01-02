@@ -1,14 +1,29 @@
 # Virtual environments
 venv/
-.env/
+.venv/
+env/
+ENV/
+.env
 
-# Python cache
+# Python cache / compiled
 __pycache__/
 *.pyc
+*.pyo
+*.pyd
 
 # Jupyter
 .ipynb_checkpoints/
 
+# VS Code / IDEs
+.vscode/
+.idea/
+*.iml
+
 # OS files
 .DS_Store
 Thumbs.db
+Desktop.ini
+
+# Excel / Office temp files
+~$*.xlsx
+~$*.xls
