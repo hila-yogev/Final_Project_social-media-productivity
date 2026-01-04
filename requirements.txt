@@ -1,0 +1,8 @@
+# Project: Final_Project_social-media-productivity
+pandas
+numpy
+scipy
+statsmodels
+scikit-learn
+matplotlib
+pytest
