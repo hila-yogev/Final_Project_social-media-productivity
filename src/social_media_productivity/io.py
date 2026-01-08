@@ -7,6 +7,7 @@ import pandas as pd
 
 
 # --- Functions ---
+
 def load_data(file_path: str) -> pd.DataFrame:
     # Load the dataset from a CSV/XLSX file into a pandas DataFrame.
 
