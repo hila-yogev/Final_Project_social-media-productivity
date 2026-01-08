@@ -1,7 +1,6 @@
 # Project: Final_Project_social-media-productivity
 
 # Required dependencies
-openpyxl
 pathlib
 pandas
 numpy
@@ -9,6 +8,8 @@ scipy
 statsmodels
 scikit-learn
 matplotlib
+seaborn
+scikit-posthocs
 
 
 # Development dependencies

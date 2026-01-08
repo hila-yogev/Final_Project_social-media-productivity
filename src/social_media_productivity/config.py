@@ -6,3 +6,4 @@ from pathlib import Path
 
 # Path to the dataset (XLSX)
 DATA_PATH = Path("data/raw/social_media_vs_productivity.xlsx")
+
