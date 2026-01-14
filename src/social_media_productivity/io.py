@@ -10,12 +10,6 @@ from pathlib import Path
 # --- Functions ---
 def load_data(file_path: str) -> pd.DataFrame:
     # Load the dataset from a CSV/XLSX file into a pandas DataFrame.
-
-    print("CWD:", Path.cwd())
-    PROJECT_ROOT = Path(__file__).resolve().parents[2]
-    print(str(PROJECT_ROOT))
-
-
     file_path = Path(file_path)  # converts str to Path if needed
 
     try:
