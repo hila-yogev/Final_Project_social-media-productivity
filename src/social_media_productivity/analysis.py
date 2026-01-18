@@ -7,6 +7,61 @@ from src.social_media_productivity.logger_config import setup_logger
 
 logger = setup_logger()
 
+import matplotlib.pyplot as plt
+import pandas as pd
+
+#  functions for descriptive and visual analysis of the dataset prior to statistical testing.
+def plot_distributions_with_kde(df: pd.DataFrame) -> None:
+    """
+    Plot histograms with overlaid Kernel Density Estimation (KDE)
+    for key continuous variables.
+
+    This visualization helps assess:
+    - Shape of the distribution
+    - Skewness (left / right)
+    - Presence of multiple modes
+    - Deviations from normality
+
+    Parameters
+    ----------
+    df : pd.DataFrame
+        Cleaned dataset used for analysis
+    """
+
+    variables = {
+        "daily_social_media_time": "Daily Social Media Time (hours)",
+        "perceived_productivity_score": "Perceived Productivity Score",
+        "actual_productivity_score": "Actual Productivity Score",
+        "productivity_gap": "Productivity Gap"
+    }
+
+    for col, title in variables.items():
+
+        plt.figure()
+
+        # Histogram (normalized to density)
+        plt.hist(
+            df[col],
+            bins=30,
+            density=True,
+            alpha=0.6,
+            label="Histogram"
+        )
+
+        # KDE curve
+        df[col].plot(
+            kind="kde",
+            linewidth=2,
+            label="KDE"
+        )
+
+        # Plot labels
+        plt.title(f"Distribution of {title}")
+        plt.xlabel(title)
+        plt.ylabel("Density")
+        plt.legend()
+
+        plt.show()
 
 def social_media_time_histogram(df: pd.DataFrame) -> tuple[float, float]:
     # displays social media time histogram.

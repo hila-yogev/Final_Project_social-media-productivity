@@ -3,7 +3,7 @@
 
 from src.social_media_productivity.io import load_data
 from src.social_media_productivity.cleaning import clean_and_process_data
-from src.social_media_productivity.analysis import run_analysis_pipeline
+from src.social_media_productivity.analysis import run_analysis_pipeline, plot_distributions_with_kde
 from src.social_media_productivity.visualization import generate_visualizations
 from src.social_media_productivity.constants import DATA_PATH, RELEVANT_COLUMNS
 from src.social_media_productivity.logger_config import setup_logger
@@ -30,7 +30,7 @@ def main() -> None:
     logger.info(">>> STAGE 1.5: Data Overview")
     logger.info("    Displaying only the Relevant Columns for this project:")
 
-    # Select only your 4 specific columns
+    # Select only our 4 specific columns
     try:
         df_overview = df_raw[RELEVANT_COLUMNS]
 
@@ -52,6 +52,9 @@ def main() -> None:
     logger.info(">>> STAGE 3: Statistical Analysis")
     run_analysis_pipeline(df_clean)
     logger.info("    Statistical analysis finished. Check logs.")
+
+    # Exploratory Data Analysis (distributions)
+    plot_distributions_with_kde(df_clean)
 
     # STAGE 4: Visualize
     logger.info(">>> STAGE 4: Visualization")
