@@ -29,4 +29,8 @@ Desktop.ini
 ~$*.xls
 
 # logs
-outputs/logs/*.log
+outputs/logs/
+
+# figures
+outputs/figures/
+

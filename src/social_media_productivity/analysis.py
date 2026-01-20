@@ -1,116 +1,142 @@
-# --------------- Statistical Analysis Module ---------------
-# This module performs the statistical tests.
+"""
+analysis.py
+
+Statistical analysis for the project:
+1) Spearman correlations between daily social media time and:
+   - productivity gap (perceived - actual)
+   - actual productivity score
+   - perceived productivity score
+2) Kruskal-Wallis test comparing productivity gap across preferred platforms
+
+All outputs are written to the project logger.
+"""
+
+from __future__ import annotations
 
 import pandas as pd
 from scipy.stats import spearmanr, kruskal
+
 from src.social_media_productivity.logger_config import setup_logger
+from src.social_media_productivity.constants import (
+    ALPHA,
+    COL_TIME,
+    COL_GAP,
+    COL_ACTUAL,
+    COL_PERCEIVED,
+    COL_PLATFORM,
+)
 
 logger = setup_logger()
 
-import matplotlib.pyplot as plt
-import pandas as pd
 
-#  functions for descriptive and visual analysis of the dataset prior to statistical testing.
-def plot_distributions_with_kde(df: pd.DataFrame) -> None:
+def _run_single_spearman(df: pd.DataFrame, x_col: str, y_col: str) -> tuple[float, float]:
     """
-    Plot histograms with overlaid Kernel Density Estimation (KDE)
-    for key continuous variables.
-
-    This visualization helps assess:
-    - Shape of the distribution
-    - Skewness (left / right)
-    - Presence of multiple modes
-    - Deviations from normality
+    Run Spearman correlation between two columns and log the result.
 
     Parameters
     ----------
-    df : pd.DataFrame
-        Cleaned dataset used for analysis
+    df:
+        Input dataframe.
+    x_col, y_col:
+        Column names for the two variables.
+
+    Returns
+    -------
+    (rho, p_value):
+        Spearman correlation coefficient (rho) and p-value.
     """
+    logger.info(f"Running Spearman Correlation: {x_col} vs {y_col}")
 
-    variables = {
-        "daily_social_media_time": "Daily Social Media Time (hours)",
-        "perceived_productivity_score": "Perceived Productivity Score",
-        "actual_productivity_score": "Actual Productivity Score",
-        "productivity_gap": "Productivity Gap"
-    }
+    # Spearman cannot handle NaNs reliably -> drop rows missing either variable.
+    pair_df = df[[x_col, y_col]].dropna()
 
-    for col, title in variables.items():
-
-        plt.figure()
-
-        # Histogram (normalized to density)
-        plt.hist(
-            df[col],
-            bins=30,
-            density=True,
-            alpha=0.6,
-            label="Histogram"
+    # Edge case: if data is too small, spearmanr can return nan or error.
+    if len(pair_df) < 3:
+        logger.warning(
+            f"Not enough valid rows for Spearman ({x_col} vs {y_col}). "
+            f"Need >= 3, got {len(pair_df)}."
         )
+        return float("nan"), float("nan")
 
-        # KDE curve
-        df[col].plot(
-            kind="kde",
-            linewidth=2,
-            label="KDE"
-        )
+    rho, p_value = spearmanr(pair_df[x_col], pair_df[y_col])
 
-        # Plot labels
-        plt.title(f"Distribution of {title}")
-        plt.xlabel(title)
-        plt.ylabel("Density")
-        plt.legend()
+    logger.info(f"   Result: rho={rho:.4f}, p-value={p_value:.4f}")
 
-        plt.show()
-
-def social_media_time_histogram(df: pd.DataFrame) -> tuple[float, float]:
-    # displays social media time histogram.
-    pass
-
-
-def run_spearman_correlation(df: pd.DataFrame) -> tuple[float, float]:
-    # Calculates Spearman correlation: Time vs Productivity Gap.
-    var1, var2 = 'daily_social_media_time', 'productivity_gap'
-    logger.info(f"Running Spearman Correlation: {var1} vs {var2}")
-
-    corr, p_value = spearmanr(df[var1], df[var2])
-    logger.info(f"Spearman Result: Correlation={corr:.4f}, p-value={p_value:.4f}")
-
-    if p_value < 0.05:
-        logger.info(">> Result is STATISTICALLY SIGNIFICANT.")
+    if p_value < ALPHA:
+        logger.info(f"   >> SIGNIFICANT (p < {ALPHA}).")
     else:
-        logger.info(">> Result is NOT statistically significant.")
-    return corr, p_value
+        logger.info(f"   >> Not significant (p >= {ALPHA}).")
+
+    return float(rho), float(p_value)
+
+
+def run_correlation_suite(df: pd.DataFrame) -> dict[str, tuple[float, float]]:
+    """
+    Run the project's 3 Spearman correlations.
+
+    1) Time vs Gap (original hypothesis)
+    2) Time vs Actual Productivity
+    3) Time vs Perceived Productivity
+
+    Returns
+    -------
+    dict:
+        Mapping from test name to (rho, p_value).
+    """
+    logger.info("--- Starting Correlation Suite ---")
+
+    results: dict[str, tuple[float, float]] = {}
+
+    results["gap"] = _run_single_spearman(df, COL_TIME, COL_GAP)
+    results["actual"] = _run_single_spearman(df, COL_TIME, COL_ACTUAL)
+    results["perceived"] = _run_single_spearman(df, COL_TIME, COL_PERCEIVED)
+
+    return results
 
 
 def run_kruskal_wallis(df: pd.DataFrame) -> tuple[float, float]:
-    #Performs Kruskal-Wallis test: Gap across Platforms.
-    group_col, value_col = 'social_platform_preference', 'productivity_gap'
-    logger.info(f"Running Kruskal-Wallis Test: {value_col} by {group_col}")
+    """
+    Run Kruskal-Wallis test: Does productivity gap differ across platform groups?
 
-    platforms = df[group_col].unique()
-    groups = [df[df[group_col] == p][value_col] for p in platforms]
+    Returns
+    -------
+    (h_stat, p_value)
+    """
+    logger.info(f"Running Kruskal-Wallis Test: {COL_GAP} by {COL_PLATFORM}")
 
-    stat, p_value = kruskal(*groups)
-    logger.info(f"Kruskal-Wallis Result: H-stat={stat:.4f}, p-value={p_value:.4f}")
+    # Drop rows missing platform or gap
+    kw_df = df[[COL_PLATFORM, COL_GAP]].dropna()
 
-    if p_value < 0.05:
+    # Build groups (one series per platform)
+    platforms = kw_df[COL_PLATFORM].unique()
+
+    groups = [kw_df.loc[kw_df[COL_PLATFORM] == p, COL_GAP] for p in platforms]
+
+    # Kruskal needs at least 2 groups, and each group needs at least 1 value
+    non_empty_groups = [g for g in groups if len(g) > 0]
+    if len(non_empty_groups) < 2:
+        logger.warning("Not enough non-empty platform groups for Kruskal-Wallis.")
+        return float("nan"), float("nan")
+
+    h_stat, p_value = kruskal(*non_empty_groups)
+
+    logger.info(f"Kruskal-Wallis Result: H-stat={h_stat:.4f}, p-value={p_value:.4f}")
+
+    if p_value < ALPHA:
         logger.info(">> Significant differences found between platforms.")
     else:
         logger.info(">> No significant difference found between platforms.")
-    return stat, p_value
+
+    return float(h_stat), float(p_value)
 
 
-def run_analysis_pipeline(df: pd.DataFrame) -> dict:
-    # Orchestrator function that runs all statistical tests.
-    results = {}
+def run_analysis_pipeline(df: pd.DataFrame) -> None:
+    """
+    Orchestrator function: runs all statistical tests in the correct order.
+    """
     logger.info("--- Starting Statistical Analysis ---")
 
-    corr, p_spearman = run_spearman_correlation(df)
-    results['spearman'] = {'correlation': corr, 'p_value': p_spearman}
-
-    stat, p_kruskal = run_kruskal_wallis(df)
-    results['kruskal'] = {'statistic': stat, 'p_value': p_kruskal}
+    run_correlation_suite(df)
+    run_kruskal_wallis(df)
 
     logger.info("--- Statistical Analysis Complete ---")
-    return results
