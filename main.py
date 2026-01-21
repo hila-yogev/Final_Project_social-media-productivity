@@ -1,121 +1,55 @@
 # --------------- Main Script ---------------
-# Each function call represents a major stage.
-"""
-from social_media_productivity.io import load_data
-from social_media_productivity.cleaning import clean_and_process_data
-from social_media_productivity.constants import DATA_PATH
+# This is the entry point for the project analysis pipeline.
 
-def main() -> None:
-    # Stage 1: Data import
-    df = load_data(DATA_PATH)
-
-    # Quick sanity check (temporary)
-    print("Dataset loaded successfully!")
-    print("Shape:", df.shape)
-  
-    print(df.head())
-
-    # Stage 2: Data cleaning (will be added)
-    # df = clean_data(df)
-
-    # Stage 3: Feature engineering (will be added)
-    # df = add_features(df)
-
-    # Stage 4: Statistical tests (will be added)
-    # stats_results = run_stat_tests(df)
-
-    # Stage 5: Modeling (will be added)
-    # model_results = run_models(df)
-
-    # Stage 6: Visualizations / outputs (will be added)
-    # save_outputs(df, stats_results, model_results)
-
-if __name__ == "__main__":
-    main()
-
-"""
-
-"""
-
-# --- Main Script ---
-# Each function call represents a major stage.
 from src.social_media_productivity.io import load_data
 from src.social_media_productivity.cleaning import clean_and_process_data
-from src.social_media_productivity.constants import DATA_PATH
+from src.social_media_productivity.analysis import run_analysis_pipeline
+from src.social_media_productivity.visualization import generate_visualizations
+from src.social_media_productivity.constants import DATA_PATH, RELEVANT_COLUMNS
+from src.social_media_productivity.logger_config import setup_logger
+
+logger = setup_logger()
+
 
 def main() -> None:
- 
-    # Stage 1: Load data
-    print("\n" + "=" * 70)
-    print(" STAGE 1: LOADING DATA")
-    print("=" * 70)
-    df = load_data(DATA_PATH)
-    
-    # Stage 2: Clean data
-    print("\n" + "=" * 70)
-    print(" STAGE 2: CLEANING & PROCESSING DATA")
-    print("=" * 70)
-    df_clean = clean_and_process_data(df)
-    
-    # Pipeline complete
-    print("\n" + "=" * 70)
-    print(" ✅ PIPELINE COMPLETE")
-    print("=" * 70 + "\n")
+    """
+    Main execution function.
+    Runs: Load -> Display -> Clean -> Analyze -> Visualize.
+    """
+    logger.info("==========================================")
+    logger.info("   STARTING SOCIAL MEDIA ANALYSIS PIPELINE")
+    logger.info("==========================================")
+
+    # STAGE 1: Load
+    logger.info(">>> STAGE 1: Loading Data")
+    df_raw = load_data(DATA_PATH)
+    logger.info(f"    Raw data loaded. Rows: {df_raw.shape[0]}, Cols: {df_raw.shape[1]}")
+
+    # STAGE 1.5: Overview
+    logger.info(">>> STAGE 1.5: Data Overview")
+    try:
+        df_overview = df_raw[RELEVANT_COLUMNS]
+        logger.info("\n" + df_overview.head().to_string())
+    except KeyError:
+        logger.warning("    Some relevant columns missing in raw data (will be handled in cleaning).")
+
+    # STAGE 2: Clean
+    logger.info(">>> STAGE 2: Cleaning Data")
+    df_clean = clean_and_process_data(df_raw)
+
+    # STAGE 3: Analyze
+    logger.info(">>> STAGE 3: Statistical Analysis")
+    run_analysis_pipeline(df_clean)
+
+    # STAGE 4: Visualize
+    logger.info(">>> STAGE 4: Visualization")
+    generate_visualizations(df_clean)
+    logger.info("    Visualizations saved to 'outputs/figures/'.")
+
+    logger.info("==========================================")
+    logger.info("   PIPELINE EXECUTION FINISHED SUCCESSFULLY")
+    logger.info("==========================================")
 
 
 if __name__ == "__main__":
     main()
-
-"""
-
-    # --- Main Script ---
-# Each function call represents a major stage.
-from src.social_media_productivity.io import load_data
-from src.social_media_productivity.cleaning import clean_and_process_data
-from src.social_media_productivity.constants import DATA_PATH
-
-def main() -> None:
-    
-    # Stage 1: Load data
-    print("\n" + "=" * 70)
-    print(" STAGE 1: LOADING DATA")
-    print("=" * 70)
-    df = load_data(DATA_PATH)
-    print(f"\n✓ Raw data loaded: {df.shape[0]} rows × {df.shape[1]} columns")
-    print(f"  Columns: {df.columns.tolist()}")
-    
-    # Stage 2: Clean data
-    print("\n" + "=" * 70)
-    print(" STAGE 2: CLEANING & PROCESSING DATA")
-    print("=" * 70)
-    df_clean = clean_and_process_data(df)
-    
-    # Stage 3: Summary report
-    print("\n" + "=" * 70)
-    print(" STAGE 3: CLEANING SUMMARY")
-    print("=" * 70)
-    
-    print(f"\n📊 Final Dataset Information:")
-    print(f"  Shape: {df_clean.shape[0]} rows × {df_clean.shape[1]} columns")
-    
-    print(f"\n📋 Columns in cleaned dataset:")
-    for i, col in enumerate(df_clean.columns, 1):
-        print(f"  {i}. {col}")
-    
-    print(f"\n🔍 Missing values in cleaned data:")
-    missing_info = df_clean.isnull().sum()
-    if missing_info.sum() == 0:
-        print(f"  ✓ All missing values have been imputed!")
-    else:
-        for col, count in missing_info.items():
-            if count > 0:
-                print(f"  - {col}: {count} missing values")
-    
-    # Pipeline complete
-    print("\n" + "=" * 70)
-    print(" ✅ MAIN COMPLETE")
-    print("=" * 70 + "\n")
-
-
-if __name__ == "__main__":
-    main() 

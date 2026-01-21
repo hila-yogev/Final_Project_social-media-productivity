@@ -1,25 +1,43 @@
-# --------------- Constants Module ---------------
-# Keep important paths and constants in one place.
+"""
+constants.py
+
+Central place for project constants:
+- Paths
+- Column names (avoid "magic strings" scattered across files)
+- Statistical configuration (alpha)
+- Cleaning configuration (IQR multiplier, etc.)
+"""
 
 from pathlib import Path
 
-# Path to the dataset (XLSX)
-DATA_PATH = Path("data/social_media_vs_productivity.xlsx")
+# ---------- Project paths ----------
+# Project root is the folder that contains: data/, outputs/, src/, main.py
+PROJECT_ROOT: Path = Path(__file__).resolve().parents[2]
 
-# Columns used in our research question
-RELEVANT_COLUMNS = [
-    "daily_social_media_time",
-    "social_platform_preference",
-    "perceived_productivity_score",
-    "actual_productivity_score",
-]
+DATA_DIR: Path = PROJECT_ROOT / "data"
+OUTPUTS_DIR: Path = PROJECT_ROOT / "outputs"
+FIGURES_DIR: Path = OUTPUTS_DIR / "figures"
+LOGS_DIR: Path = OUTPUTS_DIR / "logs"
 
-# Numeric/ordinal columns where we impute missing values with the median
-RELEVANT_COLUMNS_FOR_IMPUTATION = [
-    "daily_social_media_time",
-    "perceived_productivity_score",
-    "actual_productivity_score",
-]
+# IMPORTANT: must match the actual file name inside /data
+DATA_FILENAME: str = "social_media_vs_productivity.xlsx"
+DATA_PATH: Path = DATA_DIR / DATA_FILENAME
 
-# IQR rule configuration for winsorization
-IQR_MULTIPLIER = 1.5
+# ---------- Column names ----------
+COL_TIME: str = "daily_social_media_time"
+COL_PLATFORM: str = "social_platform_preference"
+COL_PERCEIVED: str = "perceived_productivity_score"
+COL_ACTUAL: str = "actual_productivity_score"
+COL_GAP: str = "productivity_gap"
+
+# Columns needed for this project’s core pipeline
+RELEVANT_COLUMNS: list[str] = [COL_TIME, COL_PLATFORM, COL_PERCEIVED, COL_ACTUAL]
+
+# Numeric columns where missing values will be imputed with the median
+NUMERIC_COLS_FOR_IMPUTATION: list[str] = [COL_TIME, COL_PERCEIVED, COL_ACTUAL]
+
+# ---------- Statistical configuration ----------
+ALPHA: float = 0.05
+
+# ---------- Cleaning configuration ----------
+IQR_MULTIPLIER: float = 1.5

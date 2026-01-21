@@ -27,3 +27,10 @@ Desktop.ini
 # Excel / Office temp files
 ~$*.xlsx
 ~$*.xls
+
+# logs
+outputs/logs/
+
+# figures
+outputs/figures/
+
