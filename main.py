@@ -39,7 +39,7 @@ def main() -> None:
 
     # STAGE 3: Analyze
     logger.info(">>> STAGE 3: Statistical Analysis")
-    run_analysis_pipeline(df_clean)
+    run_analysis_pipeline(df_clean, df_raw)
 
     # STAGE 4: Visualize
     logger.info(">>> STAGE 4: Visualization")
