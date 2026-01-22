@@ -31,7 +31,7 @@ from src.social_media_productivity.constants import (
 )
 
 logger = setup_logger()
-
+# TODO - why underscore?
 
 def _ensure_output_dir(output_dir: Path = FIGURES_DIR) -> Path:
     """

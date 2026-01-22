@@ -63,13 +63,13 @@ def clean_and_process_data(df: pd.DataFrame) -> pd.DataFrame:
     for col in NUMERIC_COLS_FOR_IMPUTATION:
         df_clean[col] = pd.to_numeric(df_clean[col], errors="coerce")
 
-    # Step 1: Handle missing values
+    # Handle missing values
     _impute_missing_values(df_clean, NUMERIC_COLS_FOR_IMPUTATION)
 
-    # Step 2: Handle outliers
+    # Handle outliers
     _winsorize_column(df_clean, COL_TIME)
 
-    # Step 3: Create 'productivity_gap' (Perceived - Actual)
+    # Create 'productivity_gap' (Perceived - Actual)
     df_clean[COL_GAP] = df_clean[COL_PERCEIVED] - df_clean[COL_ACTUAL]
 
     logger.info("Created new feature: 'productivity_gap'")

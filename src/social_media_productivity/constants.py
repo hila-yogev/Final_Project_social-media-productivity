@@ -19,9 +19,10 @@ OUTPUTS_DIR: Path = PROJECT_ROOT / "outputs"
 FIGURES_DIR: Path = OUTPUTS_DIR / "figures"
 LOGS_DIR: Path = OUTPUTS_DIR / "logs"
 
-# IMPORTANT: must match the actual file name inside /data
 DATA_FILENAME: str = "social_media_vs_productivity.xlsx"
 DATA_PATH: Path = DATA_DIR / DATA_FILENAME
+
+COL_TIME_Q: str = "time_quartile"
 
 # ---------- Column names ----------
 COL_TIME: str = "daily_social_media_time"

@@ -18,8 +18,6 @@ def load_data(file_path: Path) -> pd.DataFrame:
     """
     Loads the dataset from a CSV or Excel file.
     """
-    # PROJECT_ROOT = Path(__file__).resolve().parent[2]
-    # print(f"PROJECT_ROOT: {PROJECT_ROOT}")
 
     # Log the attempt to start loading data
     logger.info(f"Attempting to load data from: {file_path}")
