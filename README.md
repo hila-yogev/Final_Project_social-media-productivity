@@ -23,3 +23,13 @@ This project analyzes the relationship between **daily social media usage** and 
 ## Dataset
 **Source:** Kaggle — *Social*
 
+
+additions:
+
+This project applies targeted data cleaning only to variables
+directly involved in the research question, in order to avoid
+unnecessary assumptions on unrelated features.
+
+Note on Missing Value Imputation
+
+Missing values in key variables were handled using median imputation to preserve sample size and robustness to outliers. This approach may introduce repeated values at the median, which can appear as horizontal or vertical bands in some visualizations. These patterns reflect preprocessing effects rather than meaningful behavioral structures and are taken into account when interpreting results.

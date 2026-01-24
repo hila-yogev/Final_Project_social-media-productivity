@@ -1,6 +1,7 @@
-"""
-analysis.py
+# --------------- Analysis Module ---------------
+# This module analyzes statistically the dataset.
 
+"""
 Statistical analysis for the project:
 1) Spearman correlations between daily social media time and:
    - productivity gap (perceived - actual)
@@ -106,13 +107,14 @@ def _run_single_spearman(df: pd.DataFrame, x_col: str, y_col: str) -> tuple[floa
 
 def run_correlation_suite(df: pd.DataFrame) -> dict[str, tuple[float, float]]:
     """
-    Run the project's 3 Spearman correlations and apply Holm correction across them.
+    Run the project's 4 Spearman correlations and apply Holm correction across them.
 
     Tests
     -----
-    1) Time vs Gap
-    2) Time vs Actual Productivity
-    3) Time vs Perceived Productivity
+    1) Actual Productivity vs Perceived Productivity
+    2) Social Media Time vs Actual Productivity
+    3) Social Media Time vs Perceived Productivity
+    4) Social Media Time vs Gap
 
     Returns
     -------
@@ -124,12 +126,21 @@ def run_correlation_suite(df: pd.DataFrame) -> dict[str, tuple[float, float]]:
 
     results: dict[str, tuple[float, float]] = {}
 
-    results["gap"] = _run_single_spearman(df, COL_TIME, COL_GAP)
+    # Test 1: Actual vs Perceived
+    results["actual_vs_perceived"] = _run_single_spearman(df, COL_ACTUAL, COL_PERCEIVED)
+    
+    # Test 2-4: Time vs outcomes
     results["actual"] = _run_single_spearman(df, COL_TIME, COL_ACTUAL)
     results["perceived"] = _run_single_spearman(df, COL_TIME, COL_PERCEIVED)
+    results["gap"] = _run_single_spearman(df, COL_TIME, COL_GAP)
 
-    # Multiple-comparisons correction across the 3 p-values (Holm)
-    raw_pvals = [results["gap"][1], results["actual"][1], results["perceived"][1]]
+    # Multiple-comparisons correction across the 4 p-values (Holm)
+    raw_pvals = [
+        results["actual_vs_perceived"][1],
+        results["actual"][1],
+        results["perceived"][1],
+        results["gap"][1]
+    ]
 
     # If any p-values are nan, Holm is not meaningful -> skip correction
     if any(pd.isna(p) for p in raw_pvals):
@@ -139,9 +150,10 @@ def run_correlation_suite(df: pd.DataFrame) -> dict[str, tuple[float, float]]:
     adjusted = _holm_adjust(raw_pvals)
 
     logger.info("--- Holm-corrected p-values (familywise error control) ---")
-    logger.info(f"   gap:      raw={raw_pvals[0]:.4f} | holm={adjusted[0]:.4f}")
-    logger.info(f"   actual:   raw={raw_pvals[1]:.4f} | holm={adjusted[1]:.4f}")
-    logger.info(f"   perceived:raw={raw_pvals[2]:.4f} | holm={adjusted[2]:.4f}")
+    logger.info(f"   actual_vs_perceived: raw={raw_pvals[0]:.4f} | holm={adjusted[0]:.4f}")
+    logger.info(f"   actual:              raw={raw_pvals[1]:.4f} | holm={adjusted[1]:.4f}")
+    logger.info(f"   perceived:           raw={raw_pvals[2]:.4f} | holm={adjusted[2]:.4f}")
+    logger.info(f"   gap:                 raw={raw_pvals[3]:.4f} | holm={adjusted[3]:.4f}")
 
     return results
 
@@ -308,6 +320,7 @@ def run_complete_case_sensitivity(df_raw: pd.DataFrame) -> None:
     logger.info(f"Complete-case n={len(cc)} (out of {len(df_raw)})")
 
     # Rerun key tests on complete-case
+    _run_single_spearman(cc, COL_ACTUAL, COL_PERCEIVED)
     _run_single_spearman(cc, COL_TIME, COL_GAP)
     _run_single_spearman(cc, COL_TIME, COL_ACTUAL)
     _run_single_spearman(cc, COL_TIME, COL_PERCEIVED)
