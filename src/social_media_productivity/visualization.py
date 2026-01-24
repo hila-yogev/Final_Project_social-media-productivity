@@ -1,13 +1,11 @@
+# --------------- Visualization Module ---------------
+# This module generates and saves all project figures to outputs/figures/.
+
 """
-visualization.py
-
-Generates and saves all project figures to outputs/figures/.
-
 Figures produced:
-1) Histograms + KDE for key variables
-2) Detailed histogram for daily social media time (mean + median lines)
-3) Scatter/regression plots (time vs gap / actual / perceived)
-4) Boxplot: productivity gap by preferred platform
+1) Histograms + KDE for key variables (with mean + median lines)
+2) Scatter/regression plots (time vs gap / actual / perceived)
+3) Boxplot: productivity gap by preferred platform
 
 All saves are logged via the project logger.
 """
@@ -31,7 +29,9 @@ from src.social_media_productivity.constants import (
 )
 
 logger = setup_logger()
-# TODO - why underscore?
+
+
+# Helper functions - private
 
 def _ensure_output_dir(output_dir: Path = FIGURES_DIR) -> Path:
     """
@@ -70,6 +70,8 @@ def _save_figure(output_path: Path) -> None:
     logger.info(f"Saved figure: {output_path.name}")
 
 
+# Public functions:
+
 def plot_distributions_with_kde(df: pd.DataFrame) -> None:
     """
     Plot histograms with KDE for key variables and save them as PNG files.
@@ -88,65 +90,53 @@ def plot_distributions_with_kde(df: pd.DataFrame) -> None:
             logger.warning(f"Skipping distribution plot. Missing column: '{col}'")
             continue
 
+        # Get data and calculate statistics
+        series = df[col].dropna()
+        mean_val = series.mean()
+        median_val = series.median()
+
+        # Log the statistics
+        logger.info(f"Distribution statistics for '{col}': mean={mean_val:.2f}, median={median_val:.2f}")
+
         plt.figure(figsize=(8, 6))
-        sns.histplot(df[col].dropna(), kde=True, stat="density", linewidth=0)
+        sns.histplot(series, kde=True, stat="density", linewidth=0)
         plt.title(f"Distribution of {col.replace('_', ' ').title()}")
         plt.xlabel(col.replace("_", " ").title())
         plt.ylabel("Density")
 
+        # Add text box with statistics
+        textstr = f'Mean: {mean_val:.2f}\nMedian: {median_val:.2f}'
+        plt.text(
+            0.95, 0.95,  # Position: x=0.95 (right), y=0.95 (top) in axes coordinates
+            textstr,
+            transform=plt.gca().transAxes,  # Use axes coordinates (0-1 scale)
+            fontsize=10,
+            verticalalignment='top',
+            horizontalalignment='right',
+            bbox=dict(boxstyle='round', facecolor='wheat', alpha=0.5)  # Box styling
+        )
+        
         output_file = save_dir / f"distribution_{col}.png"
         _save_figure(output_file)
 
     logger.info("Finished distribution plots.")
 
-
-def plot_social_media_time_histogram(df: pd.DataFrame) -> None:
-    """
-    Detailed histogram for daily social media time.
-    Adds mean and median reference lines.
-    """
-    col = COL_TIME
-    logger.info(f"Generating detailed histogram for '{col}'...")
-    save_dir = _ensure_output_dir()
-
-    if col not in df.columns:
-        logger.warning(f"Skipping detailed histogram. Missing column: '{col}'")
-        return
-
-    series = df[col].dropna()
-
-    plt.figure(figsize=(10, 6))
-    sns.histplot(series, kde=False, edgecolor="black")
-
-    mean_val = series.mean()
-    median_val = series.median()
-
-    plt.axvline(mean_val, linestyle="--", label=f"Mean: {mean_val:.2f}")
-    plt.axvline(median_val, linestyle="-", label=f"Median: {median_val:.2f}")
-
-    plt.title("Detailed Distribution: Daily Social Media Time")
-    plt.xlabel("Daily Social Media Time")
-    plt.ylabel("Count")
-    plt.legend()
-
-    output_file = save_dir / "social_media_time_detailed.png"
-    _save_figure(output_file)
-
-
 def plot_scatter_suite(df: pd.DataFrame) -> None:
     """
-    Generates 3 scatter plots with regression line:
-    1) Time vs Gap
-    2) Time vs Actual Productivity
-    3) Time vs Perceived Productivity
+    Generates 4 scatter + heatmap plots:
+    1) Actual Productivity vs Perceived Productivity
+    2) Social Media Time vs Actual Productivity
+    3) Social Media Time vs Perceived Productivity
+    4) Social Media Time vs Gap
     """
-    logger.info("Generating scatter plot suite...")
+    logger.info("Generating scatter + heatmap suite...")
     save_dir = _ensure_output_dir()
 
     relationships = [
+        (COL_ACTUAL, COL_PERCEIVED, "Actual vs Perceived Productivity"),
+        (COL_TIME, COL_ACTUAL, "Time vs Actual Productivity"),
+        (COL_TIME, COL_PERCEIVED, "Time vs Perceived Productivity"),
         (COL_TIME, COL_GAP, "Time vs Gap"),
-        (COL_TIME, COL_ACTUAL, "Time vs Actual"),
-        (COL_TIME, COL_PERCEIVED, "Time vs Perceived"),
     ]
 
     for x_col, y_col, title in relationships:
@@ -162,19 +152,38 @@ def plot_scatter_suite(df: pd.DataFrame) -> None:
             logger.warning(f"Skipping scatter plot '{title}'. No valid (non-NaN) rows.")
             continue
 
-        plt.figure(figsize=(10, 6))
+        # Create figure with 2 subplots (1 row, 2 columns)
+        fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(16, 6))
+        
+        # LEFT SUBPLOT: Scatter plot with regression line
         sns.regplot(
             data=plot_df,
             x=x_col,
             y=y_col,
             scatter_kws={"alpha": 0.4},
+            line_kws={"color": "red", "linewidth": 2},
+            ax=ax1
         )
 
-        plt.title(title)
-        plt.xlabel(x_col.replace("_", " ").title())
-        plt.ylabel(y_col.replace("_", " ").title())
+        ax1.set_title(f"{title} - Scatter Plot")
+        ax1.set_xlabel(x_col.replace("_", " ").title())
+        ax1.set_ylabel(y_col.replace("_", " ").title())
+        
+        # RIGHT SUBPLOT: Hexbin heatmap
+        hexbin = ax2.hexbin(
+            plot_df[x_col],
+            plot_df[y_col],
+            gridsize=20,
+            cmap='YlOrRd',
+            mincnt=1
+        )
+        plt.colorbar(hexbin, ax=ax2, label='Count')
+        ax2.set_title(f"{title} - Heatmap")
+        ax2.set_xlabel(x_col.replace("_", " ").title())
+        ax2.set_ylabel(y_col.replace("_", " ").title())
 
-        filename = f"scatter_{y_col}.png"
+        # Save this combined figure
+        filename = f"scatter_&_heatmap_{x_col}_vs_{y_col}.png"
         output_file = save_dir / filename
         _save_figure(output_file)
 
@@ -205,6 +214,9 @@ def plot_platform_comparison(df: pd.DataFrame) -> None:
         data=plot_df,
         x=COL_PLATFORM,
         y=COL_GAP,
+        hue=COL_PLATFORM,      # Different color per platform
+        palette="Set2",         # Soft pastel colors
+        legend=False            # Hide redundant legend
     )
 
     plt.title("Productivity Gap Distribution by Platform")
@@ -225,7 +237,6 @@ def generate_visualizations(df: pd.DataFrame) -> None:
     sns.set_theme(style="whitegrid")
 
     plot_distributions_with_kde(df)
-    plot_social_media_time_histogram(df)
     plot_scatter_suite(df)
     plot_platform_comparison(df)
 
