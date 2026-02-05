@@ -4,7 +4,7 @@
 """
 Figures produced:
 1) Histograms + KDE for key variables (with mean + median lines)
-2) Scatter/regression plots (time vs gap / actual / perceived)
+2) Scatter/regression and Hexbin heatmap plots
 3) Boxplot: productivity gap by preferred platform
 
 All saves are logged via the project logger.
@@ -162,7 +162,8 @@ def plot_scatter_suite(df: pd.DataFrame) -> None:
             y=y_col,
             scatter_kws={"alpha": 0.4},
             line_kws={"color": "red", "linewidth": 2},
-            ax=ax1
+            ax=ax1,
+            ci=None  # Skip bootstrap - just draw the regression line
         )
 
         ax1.set_title(f"{title} - Scatter Plot")
@@ -183,7 +184,7 @@ def plot_scatter_suite(df: pd.DataFrame) -> None:
         ax2.set_ylabel(y_col.replace("_", " ").title())
 
         # Save this combined figure
-        filename = f"scatter_&_heatmap_{x_col}_vs_{y_col}.png"
+        filename = f"scatter_and_heatmap_{x_col}_vs_{y_col}.png"
         output_file = save_dir / filename
         _save_figure(output_file)
 
@@ -192,39 +193,53 @@ def plot_scatter_suite(df: pd.DataFrame) -> None:
 
 def plot_platform_comparison(df: pd.DataFrame) -> None:
     """
-    Boxplot: Productivity Gap distribution by preferred social platform.
+    Boxplots: Compare platform groups across different productivity measures.
+    Creates 3 plots:
+    1) Platform vs Productivity Gap
+    2) Platform vs Actual Productivity
+    3) Platform vs Perceived Productivity
     """
-    logger.info("Generating platform comparison box plot...")
+    logger.info("Generating platform comparison box plots...")
     save_dir = _ensure_output_dir()
 
-    if COL_PLATFORM not in df.columns or COL_GAP not in df.columns:
-        logger.warning(
-            f"Skipping platform boxplot. Missing column(s): "
-            f"{[c for c in [COL_PLATFORM, COL_GAP] if c not in df.columns]}"
+    # Define the comparisons - Column name, Plot title, Filename
+    comparisons = [
+        (COL_GAP, "Productivity Gap Distribution by Platform", "platform_boxplot_gap.png"),
+        (COL_ACTUAL, "Actual Productivity Distribution by Platform", "platform_boxplot_actual.png"),
+        (COL_PERCEIVED, "Perceived Productivity Distribution by Platform", "platform_boxplot_perceived.png"),
+    ]
+
+    for y_col, title, filename in comparisons:
+        if COL_PLATFORM not in df.columns or y_col not in df.columns:
+            logger.warning(
+                f"Skipping platform boxplot for '{y_col}'. Missing column(s): "
+                f"{[c for c in [COL_PLATFORM, y_col] if c not in df.columns]}"
+            )
+            continue
+
+        plot_df = df[[COL_PLATFORM, y_col]].dropna()
+        if plot_df.empty:
+            logger.warning(f"Skipping platform boxplot for '{y_col}'. No valid (non-NaN) rows.")
+            continue
+
+        plt.figure(figsize=(12, 6))
+        sns.boxplot(
+            data=plot_df,
+            x=COL_PLATFORM,
+            y=y_col,
+            hue=COL_PLATFORM,      # Different color per platform
+            palette="Set2",         # Soft pastel colors
+  
         )
-        return
 
-    plot_df = df[[COL_PLATFORM, COL_GAP]].dropna()
-    if plot_df.empty:
-        logger.warning("Skipping platform boxplot. No valid (non-NaN) rows.")
-        return
+        plt.title(title)
+        plt.xlabel("Preferred Social Media Platform")
+        plt.ylabel(y_col.replace("_", " ").title())
 
-    plt.figure(figsize=(12, 6))
-    sns.boxplot(
-        data=plot_df,
-        x=COL_PLATFORM,
-        y=COL_GAP,
-        hue=COL_PLATFORM,      # Different color per platform
-        palette="Set2",         # Soft pastel colors
-        legend=False            # Hide redundant legend
-    )
-
-    plt.title("Productivity Gap Distribution by Platform")
-    plt.xlabel("Preferred Social Media Platform")
-    plt.ylabel("Productivity Gap")
-
-    output_file = save_dir / "platform_boxplot.png"
-    _save_figure(output_file)
+        output_file = save_dir / filename
+        _save_figure(output_file)
+    
+    logger.info("Finished platform comparison box plots.")
 
 
 def generate_visualizations(df: pd.DataFrame) -> None:
