@@ -36,15 +36,29 @@ def main() -> None:
     # STAGE 2: Clean
     logger.info(">>> STAGE 2: Cleaning Data")
     df_clean = clean_and_process_data(df_raw)
+    logger.info(f"    Cleaned data: Rows={df_clean.shape[0]}, Cols={df_clean.shape[1]}")
+    
+    # Sanity check
+    if df_clean.shape[0] == 0:
+        logger.error("Cleaned dataset is empty! Pipeline aborted.")
+        raise ValueError("No data after cleaning.")
 
     # STAGE 3: Analyze
     logger.info(">>> STAGE 3: Statistical Analysis")
-    run_analysis_pipeline(df_clean, df_raw)
-
+    try:
+        run_analysis_pipeline(df_clean, df_raw)
+    except Exception as e:
+        logger.error(f"Statistical analysis failed: {e}", exc_info=True)
+        raise
+    
     # STAGE 4: Visualize
     logger.info(">>> STAGE 4: Visualization")
-    generate_visualizations(df_clean)
-    logger.info("    Visualizations saved to 'outputs/figures/'.")
+    try:
+        generate_visualizations(df_clean)
+        logger.info("    Visualizations saved to 'outputs/figures/'.")
+    except Exception as e:
+        logger.error(f"Visualization pipeline failed: {e}", exc_info=True)
+        raise
 
     logger.info("==========================================")
     logger.info("   PIPELINE EXECUTION FINISHED SUCCESSFULLY")

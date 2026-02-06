@@ -2,18 +2,21 @@
 # This module analyzes statistically the dataset.
 
 """
-Statistical analysis for the project:
-1) Spearman correlations between daily social media time and:
-   - productivity gap (perceived - actual)
-   - actual productivity score
-   - perceived productivity score
-   Includes Holm correction across the 3 correlations.
-
+1) Spearman correlations:
+   - time vs actual/perceived/gap (Holm-corrected across 3 tests)
+   - actual vs perceived (separated - no Holm)
+    
 2) Kruskal-Wallis test comparing productivity gap across preferred platforms
-   Includes effect size (epsilon-squared).
-   If significant, runs Dunn post-hoc test with Holm correction (if scikit-posthocs is installed).
+   Includes effect size: epsilon-squared.
+   If significant, runs Dunn post-hoc test (Holm-adjusted) if available.
 
-All outputs are written to the project logger.
+3) Complete-case sensitivity analysis (optional, requires df_raw parameter).
+
+Key Design:
+- No significance claims before Holm correction
+- Results are logged 
+- Functions return simple tuples for pipeline stability.
+- Enables testing, reporting, and downstream analysis
 """
 
 from __future__ import annotations
@@ -68,7 +71,7 @@ def _holm_adjust(p_values: list[float]) -> list[float]:
     return adjusted
 
 
-def _run_single_spearman(df: pd.DataFrame, x_col: str, y_col: str) -> tuple[float, float]:
+def _run_single_spearman(df: pd.DataFrame, x_col: str, y_col: str) -> tuple[float, float, int]:
     """
     Run Spearman correlation between two columns and log the result.
 
@@ -76,10 +79,14 @@ def _run_single_spearman(df: pd.DataFrame, x_col: str, y_col: str) -> tuple[floa
     -----
     - Rows with NaN in either variable are dropped before computing correlation.
     - Spearman is non-parametric and measures monotonic association.
+    - No significance determination here (done AFTER Holm correction only).
 
     Returns
     -------
-    (rho, p_value)
+    (rho, p_value, n)
+        rho: Spearman correlation coefficient
+        p_value: raw p-value (before Holm correction)
+        n: number of valid pairs used in computation
     """
     logger.info(f"Running Spearman Correlation: {x_col} vs {y_col}")
 
@@ -87,27 +94,32 @@ def _run_single_spearman(df: pd.DataFrame, x_col: str, y_col: str) -> tuple[floa
     pair_df = df[[x_col, y_col]].dropna()
     n = len(pair_df)
 
+    # Guard against constant input (Spearman undefined)
+    if pair_df[x_col].nunique() < 2 or pair_df[y_col].nunique() < 2:
+        logger.warning(
+            f"Spearman undefined for {x_col} vs {y_col}: constant input (n={n})."
+        )
+        return float("nan"), float("nan"), int(n)
+
     # Need enough data points for a correlation to be meaningful
     if n < 3:
         logger.warning(
             f"Not enough valid rows for Spearman ({x_col} vs {y_col}). Need >= 3, got {n}."
         )
-        return float("nan"), float("nan")
+        return float("nan"), float("nan"), 0
 
     rho, p_value = spearmanr(pair_df[x_col], pair_df[y_col])
     logger.info(f"   n={n} | rho={rho:.4f}, p-value={p_value:.4f}")
 
-    if p_value < ALPHA:
-        logger.info(f"   >> SIGNIFICANT (p < {ALPHA}).")
-    else:
-        logger.info(f"   >> Not significant (p >= {ALPHA}).")
+    # Note: No significance claims here. Determination happens AFTER Holm correction.
+    # This prevents contradictory messages (raw p says significant, Holm says not).
 
-    return float(rho), float(p_value)
+    return float(rho), float(p_value), int(n)
 
 
-def run_correlation_suite(df: pd.DataFrame) -> dict[str, tuple[float, float]]:
+def run_correlation_suite(df: pd.DataFrame) -> dict[str, tuple[float, float, int]]:
     """
-    Run the project's 4 Spearman correlations and apply Holm correction across them.
+    Run the project's 4 Spearman correlations and apply Holm correction across the relevant ones.
 
     Tests
     -----
@@ -118,13 +130,13 @@ def run_correlation_suite(df: pd.DataFrame) -> dict[str, tuple[float, float]]:
 
     Returns
     -------
-    dict[str, tuple[float, float]]
-        Mapping from test name to (rho, raw_p_value).
-        (Adjusted p-values are logged, but not returned to keep pipeline stable.)
+    dict[str, tuple[float, float, int]]
+        Mapping from test name to (rho, raw_p_value, n).
+        (Holm-adjusted p-values are logged but not returned.)
     """
     logger.info("--- Starting Correlation Suite ---")
 
-    results: dict[str, tuple[float, float]] = {}
+    results: dict[str, tuple[float, float, int]] = {}
 
     # Test 1: Actual vs Perceived
     results["actual_vs_perceived"] = _run_single_spearman(df, COL_ACTUAL, COL_PERCEIVED)
@@ -134,29 +146,41 @@ def run_correlation_suite(df: pd.DataFrame) -> dict[str, tuple[float, float]]:
     results["perceived"] = _run_single_spearman(df, COL_TIME, COL_PERCEIVED)
     results["gap"] = _run_single_spearman(df, COL_TIME, COL_GAP)
 
-    # Multiple-comparisons correction across the 4 p-values (Holm)
-    raw_pvals = [
-        results["actual_vs_perceived"][1],
-        results["actual"][1],
-        results["perceived"][1],
-        results["gap"][1]
-    ]
+    # ---- Multiple comparisons correction (Holm) ONLY for time-based tests ----
+    # actual_vs_perceived is reported separately (not part of the time-family)
+
+    p_actual_vs_perceived = results["actual_vs_perceived"][1]
+
+    time_tests = ["actual", "perceived", "gap"]  # the 3 primary hypothesis tests
+    time_raw_pvals = [results[name][1] for name in time_tests]
 
     # If any p-values are nan, Holm is not meaningful -> skip correction
-    if any(pd.isna(p) for p in raw_pvals):
+    if pd.isna(p_actual_vs_perceived) or any(pd.isna(p) for p in time_raw_pvals):
         logger.warning("Holm correction skipped because at least one p-value is NaN.")
+        logger.info(
+            f"actual_vs_perceived (separate): rho={results['actual_vs_perceived'][0]:.4f} | "
+            f"p(raw, not corrected)={p_actual_vs_perceived:.4f}"
+        )
         return results
 
-    adjusted = _holm_adjust(raw_pvals)
+    time_adjusted = _holm_adjust(time_raw_pvals)
 
-    logger.info("--- Holm-corrected p-values (familywise error control) ---")
-    logger.info(f"   actual_vs_perceived: raw={raw_pvals[0]:.4f} | holm={adjusted[0]:.4f}")
-    logger.info(f"   actual:              raw={raw_pvals[1]:.4f} | holm={adjusted[1]:.4f}")
-    logger.info(f"   perceived:           raw={raw_pvals[2]:.4f} | holm={adjusted[2]:.4f}")
-    logger.info(f"   gap:                 raw={raw_pvals[3]:.4f} | holm={adjusted[3]:.4f}")
+    # Logging
+    logger.info("--- Spearman p-values ---")
+    logger.info(
+        f"actual_vs_perceived (separate, no Holm): n={results['actual_vs_perceived'][2]} | "
+        f"rho={results['actual_vs_perceived'][0]:.4f} | p_raw={p_actual_vs_perceived:.4f}"
+)
+
+    logger.info("--- Holm correction applied to the 3 time-based tests only ---")
+    for name, raw_p, holm_p in zip(time_tests, time_raw_pvals, time_adjusted):
+        logger.info(
+            f"time vs {name}: rho={results[name][0]:.4f} | "
+            f"p(raw, not corrected)={raw_p:.4f} | p(Holm corrected)={holm_p:.4f}"
+        )
+
 
     return results
-
 
 def run_kruskal_wallis(df: pd.DataFrame) -> tuple[float, float]:
     """
@@ -210,6 +234,17 @@ def run_kruskal_wallis(df: pd.DataFrame) -> tuple[float, float]:
     if n_total > k:
         eps_sq = max(0.0, (h_stat - k + 1) / (n_total - k))
         logger.info(f"Effect size (epsilon-squared, ε²) = {eps_sq:.4f}")
+        if eps_sq < 0.01:
+            size_label = "negligible (very small effect)"
+        elif eps_sq < 0.06:
+            size_label = "small effect"
+        elif eps_sq < 0.14:
+            size_label = "medium effect"
+        else:
+            size_label = "large effect"
+
+        logger.info(f"Meaning: ε² indicates a {size_label}.")
+
     else:
         logger.warning("Could not compute epsilon-squared (N <= k).")
 
@@ -271,15 +306,20 @@ def run_time_quartile_suite(df: pd.DataFrame) -> None:
         logger.warning("Not enough rows for quartile analysis.")
         return
 
-    # Create quartiles (labels 1..4). duplicates='drop' protects against constant values edge case.
-    q_df = q_df.copy()
-    q_df["time_quartile"] = pd.qcut(q_df[COL_TIME], q=4, labels=[1, 2, 3, 4], duplicates="drop")
+    # Quantile-binning time into ~4 equal groups - "quartiles" 
+    # More robust: if qcut drops bins, labels will still match -  duplicates='drop' protects against constant values edge case.
+    # so we use labels=False (auto bin codes) +1 for readable 1..k labels and to avoid label/bins mismatch errors.
+    q_df["time_quartile"] = pd.qcut(q_df[COL_TIME], q=4, labels=False, duplicates="drop") + 1
 
     # If qcut had to drop bins (rare), ensure we still have >=2 groups
     quartiles = sorted(q_df["time_quartile"].dropna().astype(int).unique())
     if len(quartiles) < 2:
         logger.warning("Quartile binning produced <2 groups; skipping quartile suite.")
         return
+    
+    # Log how many groups were created
+    n_groups = q_df["time_quartile"].nunique()
+    logger.info(f"Time quartile binning created {n_groups} groups (1..{n_groups}).")
 
     # Log medians by quartile (very interpretable)
     logger.info("Medians by time quartile:")
@@ -320,11 +360,7 @@ def run_complete_case_sensitivity(df_raw: pd.DataFrame) -> None:
     logger.info(f"Complete-case n={len(cc)} (out of {len(df_raw)})")
 
     # Rerun key tests on complete-case
-    _run_single_spearman(cc, COL_ACTUAL, COL_PERCEIVED)
-    _run_single_spearman(cc, COL_TIME, COL_GAP)
-    _run_single_spearman(cc, COL_TIME, COL_ACTUAL)
-    _run_single_spearman(cc, COL_TIME, COL_PERCEIVED)
-
+    run_correlation_suite(cc)
     run_kruskal_wallis(cc)          # platform differences in gap
     run_time_quartile_suite(cc)     # non-linearity check
 

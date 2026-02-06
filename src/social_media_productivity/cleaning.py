@@ -32,7 +32,7 @@ def _impute_missing_values(df: pd.DataFrame, cols: list[str]) -> None:
         if missing_count > 0:
             logger.info(f"Imputed {missing_count} missing values in '{col}' with median: {median_val:.2f}")
 
-
+    
 def _winsorize_column(df: pd.DataFrame, col: str) -> None:
     """Helper: Caps outliers using the IQR method (Winsorization)."""
     q1 = df[col].quantile(0.25)
