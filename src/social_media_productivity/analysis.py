@@ -172,7 +172,6 @@ def run_correlation_suite(df: pd.DataFrame) -> dict[str, tuple[float, float, int
         f"rho={results['actual_vs_perceived'][0]:.4f} | p_raw={p_actual_vs_perceived:.4f}"
 )
 
-
     logger.info("--- Holm correction applied to the 3 time-based tests only ---")
     for name, raw_p, holm_p in zip(time_tests, time_raw_pvals, time_adjusted):
         logger.info(
