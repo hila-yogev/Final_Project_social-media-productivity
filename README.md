@@ -61,34 +61,37 @@ Defined centrally in `constants.py`:
 - `social_platform_preference`
 - `perceived_productivity_score`
 - `actual_productivity_score`
-And an engineered feature:
+And an generated feature:
 - `productivity_gap`
 
 ---
 
 ## 3) Repository Structure
 
-├─ main.py
-├─ requirements.txt
-├─ data/
-│ └─ social_media_vs_productivity.xlsx
-├─ outputs/
-│ ├─ figures/ # generated plots (PNG)
-│ └─ logs/ # pipeline.log
-├─ src/
-│ └─ social_media_productivity/
-│ ├─ constants.py # paths, column names, ALPHA, IQR_MULTIPLIER
-│ ├─ logger_config.py # unified logger (console + file)
-│ ├─ io.py # load_data() for CSV/XLSX
-│ ├─ cleaning.py # imputation + winsorization + gap feature
-│ ├─ analysis.py # Spearman, Holm correction, Kruskal-Wallis, robustness checks
-│ └─ visualization.py # hist/KDE, scatter+heatmap, platform boxplots
-└─ tests/
-├─ conftest.py
-├─ test_io.py
-├─ test_cleaning.py
-├─ test_analysis.py
-└─ test_visualization.py
+```text
+Final_Project_social-media-productivity/
+├── main.py
+├── requirements.txt
+├── data/
+│   └── social_media_vs_productivity.xlsx
+├── outputs/
+│   ├── figures/            # generated plots (PNG)
+│   └── logs/               # pipeline.log
+├── src/
+│   └── social_media_productivity/
+│       ├── constants.py        # paths, column names, ALPHA, IQR_MULTIPLIER
+│       ├── logger_config.py    # unified logger (console + file)
+│       ├── io.py               # load_data() for CSV/XLSX
+│       ├── cleaning.py         # imputation + winsorization + gap feature
+│       ├── analysis.py         # Spearman, Holm correction, Kruskal-Wallis, robustness checks
+│       └── visualization.py   # hist/KDE, scatter+heatmap, platform boxplots
+└── tests/
+    ├── conftest.py
+    ├── test_io.py
+    ├── test_cleaning.py
+    ├── test_analysis.py
+    └── test_visualization.py
+```
 ---
 
 ## 4) Key Pipeline Stages (What happens in each)
@@ -99,10 +102,10 @@ The entry point is `main.py`, which runs:
 - `load_data(DATA_PATH)` loads **CSV** or **Excel** (`.xlsx/.xls`)
 - Validates file existence and logs progress.
 
-### Stage 1.5 — Quick Overview (`main.py`)
+### Stage 2 — Quick Overview (`main.py`)
 - Logs the first rows of `RELEVANT_COLUMNS` (if present), for a fast sanity check.
 
-### Stage 2 — Cleaning & Processing (`cleaning.py`)
+### Stage 3 — Cleaning & Processing (`cleaning.py`)
 Cleaning is designed to stabilize analysis without dropping large parts of the dataset:
 
 1) **Type coercion**
@@ -122,7 +125,7 @@ Cleaning is designed to stabilize analysis without dropping large parts of the d
    - Creates:
      - `productivity_gap = perceived_productivity_score - actual_productivity_score`
 
-### Stage 3 — Statistical Analysis (`analysis.py`)
+### Stage 4 — Statistical Analysis (`analysis.py`)
 The analysis module runs several complementary tests:
 
 1) **Spearman correlations**
@@ -147,7 +150,7 @@ The analysis module runs several complementary tests:
    - **Complete-case sensitivity:** reruns key tests using only rows without missing values
      (no imputation) to check if conclusions depend on imputation.
 
-### Stage 4 — Visualization (`visualization.py`)
+### Stage 5 — Visualization (`visualization.py`)
 Figures are saved to `outputs/figures/` (directory created automatically):
 
 1) **Distributions (hist + KDE)** for:
