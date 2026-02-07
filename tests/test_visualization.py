@@ -28,14 +28,15 @@ def test_generate_visualizations_creates_files(df_clean: pd.DataFrame) -> None:
         f"distribution_{COL_PERCEIVED}.png",
         f"distribution_{COL_ACTUAL}.png",
         f"distribution_{COL_GAP}.png",
-        # detailed time histogram
-        "social_media_time_detailed.png",
-        # scatter suite (named by y variable in your code)
-        f"scatter_{COL_GAP}.png",
-        f"scatter_{COL_ACTUAL}.png",
-        f"scatter_{COL_PERCEIVED}.png",
-        # platform boxplot
-        "platform_boxplot.png",
+        # scatter and heatmap suite
+        f"scatter_and_heatmap_{COL_ACTUAL}_vs_{COL_PERCEIVED}.png",
+        f"scatter_and_heatmap_{COL_TIME}_vs_{COL_ACTUAL}.png",
+        f"scatter_and_heatmap_{COL_TIME}_vs_{COL_PERCEIVED}.png",
+        f"scatter_and_heatmap_{COL_TIME}_vs_{COL_GAP}.png",
+        # platform boxplots
+        "platform_boxplot_gap.png",
+        "platform_boxplot_actual.png",
+        "platform_boxplot_perceived.png",
     ]
 
     # Clean previous outputs for a deterministic test

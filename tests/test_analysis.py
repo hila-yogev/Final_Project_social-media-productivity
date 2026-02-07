@@ -21,12 +21,12 @@ def test_run_correlation_suite_returns_expected_keys(df_clean: pd.DataFrame) -> 
     results = run_correlation_suite(df_clean)
 
     assert isinstance(results, dict)
-    assert set(results.keys()) == {"gap", "actual", "perceived"}
+    assert set(results.keys()) == {"gap", "actual", "perceived", "actual_vs_perceived"}
 
-    for key, (rho, p) in results.items():
+    for key, (rho, p, n) in results.items():
         assert _is_number(rho), f"{key}: rho should be numeric"
         assert _is_number(p), f"{key}: p-value should be numeric"
-
+        assert _is_number(n), f"{key}: n should be numeric"
 
 def test_run_kruskal_wallis_returns_numbers(df_clean: pd.DataFrame) -> None:
     h_stat, p_value = run_kruskal_wallis(df_clean)

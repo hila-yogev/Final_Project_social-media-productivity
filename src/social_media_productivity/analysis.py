@@ -102,14 +102,14 @@ def _run_single_spearman(df: pd.DataFrame, x_col: str, y_col: str) -> tuple[floa
         return float("nan"), float("nan"), int(n)
 
     # Need enough data points for a correlation to be meaningful
-    if n < 3:
+    if n < 30:
         logger.warning(
-            f"Not enough valid rows for Spearman ({x_col} vs {y_col}). Need >= 3, got {n}."
+            f"Not enough valid rows for Spearman ({x_col} vs {y_col}). Need >= 30, got {n}."
         )
         return float("nan"), float("nan"), 0
 
     rho, p_value = spearmanr(pair_df[x_col], pair_df[y_col])
-    logger.info(f"   n={n} | rho={rho:.4f}, p-value={p_value:.4f}")
+    logger.info(f"n={n} | rho={rho:.4f}, p-value={p_value:.4f}")
 
     # Note: No significance claims here. Determination happens AFTER Holm correction.
     # This prevents contradictory messages (raw p says significant, Holm says not).
@@ -154,7 +154,7 @@ def run_correlation_suite(df: pd.DataFrame) -> dict[str, tuple[float, float, int
     time_tests = ["actual", "perceived", "gap"]  # the 3 primary hypothesis tests
     time_raw_pvals = [results[name][1] for name in time_tests]
 
-    # If any p-values are nan, Holm is not meaningful -> skip correction
+    # If any p-values are NaN, Holm is not meaningful -> skip correction
     if pd.isna(p_actual_vs_perceived) or any(pd.isna(p) for p in time_raw_pvals):
         logger.warning("Holm correction skipped because at least one p-value is NaN.")
         logger.info(
@@ -222,7 +222,7 @@ def run_kruskal_wallis(df: pd.DataFrame) -> tuple[float, float]:
     logger.info("--- Platform group sizes (n) ---")
     for p in kept_platforms:
         size = int((kw_df[COL_PLATFORM] == p).sum())
-        logger.info(f"   {p}: n={size}")
+        logger.info(f"{p}: n={size}")
 
     h_stat, p_value = kruskal(*groups)
     logger.info(

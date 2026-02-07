@@ -14,7 +14,6 @@ from src.social_media_productivity.constants import (
     COL_ACTUAL,
 )
 
-
 # Import our custom logger
 from src.social_media_productivity.logger_config import setup_logger
 
@@ -50,7 +49,6 @@ def _winsorize_column(df: pd.DataFrame, col: str) -> None:
         f"Winsorized '{col}'. Limits: [{lower_limit:.2f}, {upper_limit:.2f}]. "
         f"Capped values: {changed_count}"
     )
-
 
 
 def clean_and_process_data(df: pd.DataFrame) -> pd.DataFrame:

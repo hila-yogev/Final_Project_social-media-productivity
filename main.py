@@ -21,29 +21,29 @@ def main() -> None:
     logger.info("==========================================")
 
     # STAGE 1: Load
-    logger.info(">>> STAGE 1: Loading Data")
+    logger.info(">>> STAGE 1: Loading Data from a CSV or Excel file")
     df_raw = load_data(DATA_PATH)
-    logger.info(f"    Raw data loaded. Rows: {df_raw.shape[0]}, Cols: {df_raw.shape[1]}")
+    logger.info(f"Raw data loaded. Rows: {df_raw.shape[0]}, Cols: {df_raw.shape[1]}")
 
-    # STAGE 1.5: Overview
-    logger.info(">>> STAGE 1.5: Data Overview")
+    # STAGE 2: Overview
+    logger.info(">>> STAGE 2: Data Overview")
     try:
         df_overview = df_raw[RELEVANT_COLUMNS]
         logger.info("\n" + df_overview.head().to_string())
     except KeyError:
-        logger.warning("    Some relevant columns missing in raw data (will be handled in cleaning).")
+        logger.warning("Some relevant columns missing in raw data, can't perform the analysis.")
 
-    # STAGE 2: Clean
-    logger.info(">>> STAGE 2: Cleaning Data")
+    # STAGE 3: Clean
+    logger.info(">>> STAGE 3: Cleaning Data")
     df_clean = clean_and_process_data(df_raw)
-    logger.info(f"    Cleaned data: Rows={df_clean.shape[0]}, Cols={df_clean.shape[1]}")
+    logger.info(f"Cleaned data: Rows={df_clean.shape[0]}, Cols={df_clean.shape[1]}")
     
-    # Sanity check
+    # Quality check: verify cleaned dataset contains data
     if df_clean.shape[0] == 0:
         logger.error("Cleaned dataset is empty! Pipeline aborted.")
         raise ValueError("No data after cleaning.")
 
-    # STAGE 3: Analyze
+    # STAGE 4: Analyze
     logger.info(">>> STAGE 3: Statistical Analysis")
     try:
         run_analysis_pipeline(df_clean, df_raw)
@@ -51,11 +51,11 @@ def main() -> None:
         logger.error(f"Statistical analysis failed: {e}", exc_info=True)
         raise
     
-    # STAGE 4: Visualize
+    # STAGE 5: Visualize
     logger.info(">>> STAGE 4: Visualization")
     try:
         generate_visualizations(df_clean)
-        logger.info("    Visualizations saved to 'outputs/figures/'.")
+        logger.info("Visualizations saved to 'outputs/figures/'.")
     except Exception as e:
         logger.error(f"Visualization pipeline failed: {e}", exc_info=True)
         raise
